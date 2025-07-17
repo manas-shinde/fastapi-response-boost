@@ -1,77 +1,96 @@
 # fastapi-response-boost
+
 Speed up your FastAPI APIs with efficient caching using Redis. Practical examples and clean architecture included.
 Caching in FastAPI: Unlocking High-Performance Development
 This repository contains a simple FastAPI application demonstrating how to implement Redis caching to significantly improve API response times for frequently accessed data.
 
 ## Table of Contents
-- Introduction
 
-- Required Libraries
+- [Introduction](#Introduction)
 
-- Redis Setup and Verification
+- [Required Libraries](#required-libraries)
 
-- Setting Up the FastAPI Application
+- [Redis Setup and Verification](#redis-setup-and-verification)
 
-- Step 1: Define the Pydantic Model for User Data
+- [Setting Up the FastAPI Application](#setting-up-the-fastapi-application)
 
-- Step 2: Create a Caching Decorator
+    - [Step 1: Define the Pydantic Model for User Data](#step-1-define-the-pydantic-model-for-user-data)
 
-- Step 3: Implement a FastAPI Route for User Details
+    - [Step 2: Create a Caching Decorator](#step-2-create-a-caching-decorator)
 
-- Run the Application
+    - [Step 3: Implement a FastAPI Route for User Details](#step-3-implement-a-fastapi-route-for-user-details)
 
-- Testing the Cache
+- [Run the Application](#run-the-application)
 
-- How Caching Works in This Example
+- [Testing the Cache](#testing-the-cache)
 
-- Conclusion
+- [How Caching Works in This Example](#how-caching-works-in-this-example)
+
+- [Conclusion](#conclusion)
 
 ## Introduction
+
 In modern digital applications, efficient API performance is crucial. Caching is a powerful technique that stores frequently accessed data in memory, allowing APIs to respond instantly without repeatedly querying slower databases. This project demonstrates how to integrate Redis caching with a FastAPI application to reduce API response times and improve overall efficiency.
 
 ## Required Libraries
+
 To run this application and connect with Redis Cache, you need to install the following Python libraries:
+
 ```
 pip install -r requirements.txt
 ```
-- ```fastapi```: For building the web API.
 
-- ```uvicorn```: An ASGI server for running the FastAPI application.
+- `fastapi`: For building the web API.
 
-- ```aiocache```: An asynchronous caching library for Python, used here to interact with Redis.
+- `uvicorn`: An ASGI server for running the FastAPI application.
 
-- ```pydantic```: For data validation and settings management, used to define the User model.
+- `aiocache`: An asynchronous caching library for Python, used here to interact with Redis.
+
+- `pydantic`: For data validation and settings management, used to define the User model.
 
 ## Redis Setup and Verification
+
 Redis needs to be running for the caching mechanism to work. If you are on Windows, it's recommended to set up Redis using the Windows Subsystem for Linux (WSL).
 
 ## Install WSL
+
 Follow the instructions on the official Microsoft documentation to install WSL:
 Install WSL | Microsoft Learn
 
 You can typically install WSL with the command:
+
 ```
 wsl --install
 ```
+
 ### Install and Start Redis in WSL
+
 Once WSL is installed and your preferred Linux distribution is running, execute the following commands in your WSL terminal to install and start the Redis server:
+
 ```
 sudo apt update
 sudo apt install redis-server
 sudo systemctl start redis
 ```
+
 ### Verify Redis Connectivity
+
 To test if the Redis server is running and accessible, use the Redis CLI:
+
 ```
 redis-cli
 ```
+
 This command will open a virtual terminal connected to Redis on port 6379. You can then type Redis commands to interact with the server.
 
 ## Setting Up the FastAPI Application
+
 Let's create a simple FastAPI application that retrieves user information and caches it for future requests using Redis.
 
 ### Step 1: Define the Pydantic Model for User Data
+
 Create a file named app.py (or main.py if you prefer) and define your Pydantic model for user data. This model represents the structure of the API response.
+
 ```
 # app.py
 from pydantic import BaseModel
@@ -82,8 +101,11 @@ class User(BaseModel):
     email: str
     age: int
 ```
+
 ### Step 2: Create a Caching Decorator
+
 In the same app.py file, implement a reusable caching decorator using the aiocache library. This decorator will attempt to retrieve the response from Redis before calling the actual function.
+
 ```
 # app.py (continued)
 import json
@@ -136,10 +158,13 @@ def cache_response(ttl: int = 60, namespace: str = "main"):
         return wrapper
     return decorator
 ```
+
 Note on response.dict() if isinstance(response, BaseModel) else response: The original blog post assumes response is directly JSON serializable. If your FastAPI endpoint returns a Pydantic model instance, you'll need to convert it to a dictionary using .dict() or .model_dump() (Pydantic v2) before json.dumps(). The updated decorator includes this check.
 
 ### Step 3: Implement a FastAPI Route for User Details
+
 Now, implement a FastAPI route that retrieves user information based on a user ID. The response will be cached using Redis for faster access in subsequent requests.
+
 ```
 # app.py (continued)
 from fastapi import FastAPI, HTTPException
@@ -167,31 +192,43 @@ async def get_user_details(user_id: int):
     # Return a Pydantic User model instance
     return User(**user_data)
 ```
+
 ## Run the Application
+
 To start your FastAPI application, navigate to your project directory in the terminal and run:
+
 ```
 uvicorn app:app --reload
 ```
+
 This command tells Uvicorn to look for the app object within the app.py file and enables auto-reloading on code changes.
 
 Now, you can test the API by fetching user details via your web browser or a tool like curl:
+
 ```
 http://127.0.0.1:8000/users/1
 ```
+
 ## Testing the Cache
+
 You can verify the cache by inspecting the keys stored in Redis.
 
 Open the Redis CLI in your WSL terminal:
+
 ```
 redis-cli
 ```
+
 Once in the Redis CLI, type the following command to see all stored keys:
+
 ```
 KEYS *
 ```
+
 You should see keys like users:user:1 appearing after you make requests to your FastAPI application.
 
 ## How Caching Works in This Example
+
 - First Request: When user data is requested for the first time (e.g., GET /users/1), the API fetches it from the simulated database (users_db). The cache_response decorator then stores this result in Redis with a Time-To-Live (TTL) of 120 seconds.
 
 - Subsequent Requests: Any subsequent requests for the same user (e.g., GET /users/1 again) within the 120-second TTL period are served directly from Redis. This makes the response significantly faster and reduces the load on the "database."
@@ -199,4 +236,5 @@ You should see keys like users:user:1 appearing after you make requests to your 
 - TTL (Time to Live): After 120 seconds, the cache entry for that specific user expires. The next request for that user will then fetch the data from the database again, refreshing the cache with the latest data.
 
 ## Conclusion
+
 This project provides a practical example of how to implement Redis caching in a FastAPI application. By leveraging caching, you can significantly enhance the performance and responsiveness of your APIs, especially for data that is frequently accessed but doesn't change often.
